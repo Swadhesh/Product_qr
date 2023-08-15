@@ -6,16 +6,37 @@ import pymongo
 from pymongo import MongoClient
 
 class Product:
-    def __init__(self, name, product_id, details, expiry_date):
-        self.name = name
+    def __init__(self, price, product_id, details, expiry_date):
+        self.price = price
         self.product_id = product_id
         self.details = details
         self.expiry_date = expiry_date
 
-def main():
-    st.title("QR Code Scanner App")
-
-    st.write("Click the button to start scanning...")
+def qr_scanner_app():
+    st.markdown(
+        """
+        <style>
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #ddd;
+            margin-top: 1rem;
+        }
+        .styled-table th,
+        .styled-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .styled-table th {
+            background-color: #f2f2f2;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown('<h1 style="color:lightgreen; text-align:center;">QR code based product purchaser</h1>',unsafe_allow_html=True)
+    st.markdown('<h5 style="color:darkgreen; text-align:center;">By Swadhesh 20IT108 and Nevetha B 20IT060</h3>',unsafe_allow_html=True)
 
     # Set up MongoDB Atlas connection
     username = "Swadhesh"
@@ -47,14 +68,14 @@ def main():
                 components = qr_data.split('\n')
                 if len(components) == 4:
                     product = Product(
-                        name=components[0].split(': ')[1],
+                        price=float(components[0].split(': ')[1]),  # Convert price to float
                         product_id=components[1].split(': ')[1],
                         details=components[2].split(': ')[1],
                         expiry_date=components[3].split(': ')[1]
                     )
                     # Insert product data into MongoDB collection
                     product_data = {
-                        "name": product.name,
+                        "price": product.price,
                         "product_id": product.product_id,
                         "details": product.details,
                         "expiry_date": product.expiry_date
@@ -70,6 +91,7 @@ def main():
 
     st.subheader("Cart")
     show_cart = st.button("Show Cart")
+    total_cart_value = st.button("Total Cart Value")
     delete_specific = st.button("Skip product and continue")
     empty_cart = st.button("Empty Cart")
     
@@ -78,17 +100,32 @@ def main():
         cart_items = collection.find()
         if cart_items:
             st.write("Items in Cart:")
+            cart_data = []
             for idx, item in enumerate(cart_items, start=1):
-                st.write(f"Item {idx}:")
-                st.write(f"Product Name: {item['name']}")
-                st.write(f"Product ID: {item['product_id']}")
-                st.write(f"Product Details: {item['details']}")
-                st.write(f"Expiry Date: {item['expiry_date']}")
+                cart_data.append({
+                    "Item": idx,
+                    "Price": item['price'],
+                    "Product ID": item['product_id'],
+                    "Product Details": item['details'],
+                    "Expiry Date": item['expiry_date']
+                })
+
+            # Display cart data in a styled dataframe
+            st.dataframe(cart_data, width=800)
+
         else:
             st.write("Cart is empty.")
+    
+    # Rest of your code for total cart value, empty cart, and delete_specific buttons
+    if total_cart_value:
+        # Calculate and display total cart value
+        total_value = sum(item['price'] for item in collection.find())
+        st.write(f"Total Cart Value: {total_value}")
+    
     if empty_cart:
         collection.delete_many({})
         st.success("Cart has been emptied.")
+    
     if delete_specific:
         last_product = collection.find().sort('_id', -1).limit(1)
         if last_product:
@@ -97,6 +134,5 @@ def main():
         else:
             st.warning("Cart is empty")
 
-
 if __name__ == "__main__":
-    main()
+    qr_scanner_app()
